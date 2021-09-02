@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-void* do_job(void *arg) {
+void* do_job(void *_) {
     for (int i = 0; i < 10; ++i) {
         printf("Hello from new thread!\n");
     }
