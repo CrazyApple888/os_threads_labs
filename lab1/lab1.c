@@ -18,10 +18,6 @@ int main() {
         printf("Can't create thread\n");
         return 1;
     }
-
-    if (pthread_join(child, NULL) != 0) {
-        printf("Can't join thread\n");
-        return 1;
-    }
+    
     return 0;
 }
