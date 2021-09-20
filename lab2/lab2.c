@@ -19,6 +19,7 @@ int main() {
             return 1;
         }
         printf("Thread's return value: %lf\n", *return_value);
+        free(return_value);
         for (int i = 0; i < 10; ++i) {
             printf("Hello from old thread!\n");
         }

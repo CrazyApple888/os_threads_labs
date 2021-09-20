@@ -1,25 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
 
-#define STEPS 1000
+#define STEPS 300000000
+#define MAX_THREADS 16
 
 typedef struct Data {
     int start_position;
     int threads_amount;
+    double result;
 } Data;
 
 void *calculate(void *data) {
-    double* pi = (double*)malloc(sizeof(double));
-    *pi = 0.0;
-    int start = ((Data *) data)->start_position;
+    double pi = 0.0;
+    Data *local_data = (Data *) data;
+    int start = local_data->start_position;
     int thread_amount = ((Data *) data)->threads_amount;
     for (; start < STEPS; start += thread_amount) {
-        *pi += 1.0 / (start * 4.0 + 1.0);
-        *pi -= 1.0 / (start * 4.0 + 3.0);
+        pi += 1.0 / (start * 4.0 + 1.0);
+        pi -= 1.0 / (start * 4.0 + 3.0);
     }
+    local_data->result = pi;
 
-    pthread_exit(pi);
+    pthread_exit(EXIT_SUCCESS);
 }
 
 void destroyAll(Data *database, pthread_t *threads) {
@@ -31,40 +35,58 @@ void destroyAll(Data *database, pthread_t *threads) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Pass 1 argument, please\n");
-        return EXIT_SUCCESS;
-    }
-    int threads_amount = atoi(argv[1]);
-    if (threads_amount <= 0) {
-        printf("Incorrect argument. Requires number >= 1\n");
-    }
+int countPi(int threads_amount) {
     pthread_t *threads = (pthread_t *) malloc(sizeof(pthread_t) * threads_amount);
+    if (threads == NULL) {
+        printf("Can't allocate memory\n");
+        return EXIT_FAILURE;
+    }
     Data *database = (Data *) malloc(sizeof(Data) * threads_amount);
+    if (database == NULL) {
+        printf("Can't allocate memory\n");
+        free(threads);
+        return EXIT_FAILURE;
+    }
     for (int i = 0; i < threads_amount; ++i) {
         database[i].start_position = i;
         database[i].threads_amount = threads_amount;
+        database[i].result = 0.0;
         if (pthread_create(&threads[i], NULL, calculate, &database[i]) != 0) {
             printf("Unable to create threads\n");
             destroyAll(database, threads);
         }
     }
     double result = 0.0;
-    double *pi;
     for (int i = 0; i < threads_amount; ++i) {
-        if (pthread_join(threads[i], &pi) != 0) {
+        if (pthread_join(threads[i], NULL) != 0) {
             printf("Unable to join thread #%d\n", i);
             continue;
         }
-        if (NULL != pi) {
-            result += *pi;
-        }
+        result += database[i].result;
     }
     result *= 4;
     printf("Result value: %lf\n", result);
     destroyAll(database, threads);
-    free(pi);
 
     return EXIT_SUCCESS;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc == 2) {
+        int threads_amount = atoi(argv[1]);
+        if (threads_amount <= 0) {
+            printf("Incorrect argument. Requires number >= 1\n");
+        }
+        countPi(threads_amount);
+        return EXIT_SUCCESS;
+    }
+    struct timespec start, end;
+
+    for (int i = 1; i <= MAX_THREADS; ++i) {
+        clock_gettime(CLOCK_REALTIME, &start);
+        countPi(i);
+        clock_gettime(CLOCK_REALTIME, &end);
+        double result_time = (double)end.tv_sec - start.tv_sec +  0.000000001*(double)(end.tv_nsec-start.tv_nsec);
+        printf("Time taken %lf on %d threads\n", result_time, i);
+    }
 }
