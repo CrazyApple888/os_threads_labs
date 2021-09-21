@@ -12,12 +12,12 @@ typedef struct Data {
     double result;
 } Data;
 
-_Noreturn void *calculate(void *data) {
+void *calculate(void *data) {
     double pi = 0.0;
     Data *local_data = (Data *) data;
     int start = local_data->start_position;
     int thread_amount = ((Data *) data)->threads_amount;
-    for (; start < STEPS; start += thread_amount) {
+    for (; ; start += thread_amount) {
         pi += 1.0 / (start * 4.0 + 1.0);
         pi -= 1.0 / (start * 4.0 + 3.0);
     }
