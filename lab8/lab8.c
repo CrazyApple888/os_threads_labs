@@ -12,7 +12,7 @@ typedef struct Data {
     double result;
 } Data;
 
-_Noreturn void *calculate(void *data) {
+void *calculate(void *data) {
     double pi = 0.0;
     Data *local_data = (Data *) data;
     int start = local_data->start_position;
@@ -54,13 +54,14 @@ int countPi(int threads_amount) {
         if (pthread_create(&threads[i], NULL, calculate, &database[i]) != 0) {
             printf("Unable to create threads\n");
             destroyAll(database, threads);
+            return EXIT_FAILURE;
         }
     }
     double result = 0.0;
     for (int i = 0; i < threads_amount; ++i) {
         if (pthread_join(threads[i], NULL) != 0) {
             printf("Unable to join thread #%d\n", i);
-            continue;
+            return EXIT_FAILURE;
         }
         result += database[i].result;
     }
@@ -83,7 +84,7 @@ int main(int argc, char *argv[]) {
     }
     struct timespec start, end;
 
-    printf("Starting tests...");
+    printf("Starting tests...\n");
     for (int i = 1; i <= MAX_THREADS; ++i) {
         clock_gettime(CLOCK_REALTIME, &start);
         countPi(i);
