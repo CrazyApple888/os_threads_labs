@@ -16,13 +16,19 @@ typedef struct Data {
     double result;
 } Data;
 
-void* signal_handler_thread(void* _) {
+void *signal_handler_thread(void *_) {
     sigset_t sig_set;
     int ret_sig;
+
     sigaddset(&sig_set, SIGINT);
 
+    if (0 != pthread_sigmask(SIG_BLOCK, &sig_set, NULL)) {
+        printf("Can't init sigmask in thread\n");
+        exit(EXIT_FAILURE);
+    }
+
     sigwait(&sig_set, &ret_sig);
-    if(SIGINT == ret_sig) {
+    if (SIGINT == ret_sig) {
         pthread_mutex_lock(&mutex);
         is_alive = 0;
         pthread_mutex_unlock(&mutex);
@@ -36,7 +42,7 @@ void *calculate(void *data) {
     int start = local_data->start_position;
     int thread_amount = ((Data *) data)->threads_amount;
 
-    for (; ; start += thread_amount) {
+    for (;; start += thread_amount) {
         pi += 1.0 / (start * 4.0 + 1.0);
         pi -= 1.0 / (start * 4.0 + 3.0);
         iteration++;
@@ -110,7 +116,10 @@ int main(int argc, char *argv[]) {
 
     sigset_t blocking_set;
     sigaddset(&blocking_set, SIGINT);
-    pthread_sigmask(SIG_BLOCK, &blocking_set, NULL);
+    if (0 != pthread_sigmask(SIG_BLOCK, &blocking_set, NULL)) {
+        printf("Can't init sigmask\n");
+        return EXIT_FAILURE;
+    }
 
     if (argc == 2) {
         int threads_amount = atoi(argv[1]);

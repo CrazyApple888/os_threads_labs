@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     char string[BUFSIZ];
     int string_counter = MAX_COUNT_OF_STRINGS;
     int index;
-    printf("Enter to stop inputing\n");
+    printf("Enter to stop inputting\n");
     while (string_counter > 0 && NULL != fgets(string, BUFSIZ - 1, stdin)) {
         if (0 == strcmp(string, STOP_WORD)) {
             break;
@@ -113,16 +113,6 @@ int main(int argc, char *argv[]) {
         string_counter--;
         printf("%d\n", index);
     }
-    /*for (int i = 0; i < number_of_strings; ++i) {
-        if ((symbols_read = read(STDIN_FILENO, string_buffer[i], BUFSIZ)) < -1) {
-            printf("Error: can't save string. Terminating program...\n");
-            if (destroyStringBuffer(string_buffer, number_of_strings) != 0) {
-                printf("Can't clean string buffer...\n");
-            }
-            return 1;
-        }
-        block_buffer[i] = newBlock(string_buffer[i], symbols_read);
-    }*/
 
     int count_of_strings = MAX_COUNT_OF_STRINGS - string_counter;
     //------------------------------------------------------------------
@@ -140,17 +130,17 @@ int main(int argc, char *argv[]) {
     }
     pthread_barrier_wait(&global_barrier);
     printf("Starting sort\n");
-    if (pthread_barrier_destroy(&global_barrier) != 0) {
-        printf("DESTROY error\n");
-        destroyStringBuffer(string_buffer, MAX_COUNT_OF_STRINGS);
-        destroyBlockBuffer(block_buffer, MAX_COUNT_OF_STRINGS);
-        return EXIT_FAILURE;
-    }
     for (int i = 0; i < count_of_strings; ++i) {
         if (pthread_join(*(block_buffer[i]->thread), NULL) != 0) {
             printf("Can't join thread\n");
             break;
         }
+    }
+    if (pthread_barrier_destroy(&global_barrier) != 0) {
+        printf("DESTROY error\n");
+        destroyStringBuffer(string_buffer, MAX_COUNT_OF_STRINGS);
+        destroyBlockBuffer(block_buffer, MAX_COUNT_OF_STRINGS);
+        return EXIT_FAILURE;
     }
     destroyBlockBuffer(block_buffer, MAX_COUNT_OF_STRINGS);
     destroyStringBuffer(string_buffer, MAX_COUNT_OF_STRINGS);

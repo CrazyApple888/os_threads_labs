@@ -51,7 +51,7 @@ void *do_job(void *arg) {
         fatalExit("Mutex lock");
     }
     for (int i = 0; i < NUMBER_OF_PRINTS; ++i) {
-        if (isFirst != turn) {
+        while (isFirst != turn) {
             if (pthread_cond_wait(&condition, &mutex)) {
                 fatalExit("Cond wait");
             }
@@ -70,7 +70,7 @@ void *do_job(void *arg) {
 
 int main() {
     pthread_t child;
-    if (initialize() != 0) {
+    if (EXIT_SUCCESS != initialize()) {
         perror("Error in initialize");
         return EXIT_FAILURE;
     }
