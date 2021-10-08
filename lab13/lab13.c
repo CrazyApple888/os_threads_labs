@@ -2,8 +2,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#define SUCCESS 0
-#define FAIL 1
 #define NUMBER_OF_PRINTS 10
 
 pthread_mutex_t mutex;
@@ -17,13 +15,13 @@ typedef struct Data {
 
 int destroy() {
     if (pthread_mutex_destroy(&mutex)) {
-        return FAIL;
+        return EXIT_FAILURE;
     }
     if (pthread_cond_destroy(&condition)) {
-        return FAIL;
+        return EXIT_FAILURE;
     }
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 void fatalExit(char *error_message) {
@@ -36,13 +34,13 @@ void fatalExit(char *error_message) {
 
 int initialize() {
     if (pthread_mutex_init(&mutex, NULL)) {
-        return FAIL;
+        return EXIT_FAILURE;
     }
     if (pthread_cond_init(&condition, NULL)) {
-        return FAIL;
+        return EXIT_FAILURE;
     }
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 void *do_job(void *arg) {
@@ -84,11 +82,11 @@ int main() {
         do_job(&first);
     } else {
         printf("Can't create thread\n");
-        return 1;
+        return EXIT_FAILURE;
     }
     if (destroy()) {
         perror("Destroy");
-        return 1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }

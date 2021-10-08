@@ -99,6 +99,10 @@ void *print(void *_) {
 }
 
 int main() {
+
+    //TODO
+    // Rewrite it
+
     pthread_t child;
 
     initMutexes();

@@ -2,9 +2,13 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
+#include <signal.h>
 
-#define STEPS 300000000
-#define MAX_THREADS 16
+#define ITERATIONS_WITHOUT_CHECK 10000000
+
+pthread_barrier_t barrier;
+pthread_mutex_t mutex;
+int is_alive = 1;
 
 typedef struct Data {
     int start_position;
@@ -12,18 +16,42 @@ typedef struct Data {
     double result;
 } Data;
 
+void* signal_handler_thread(void* _) {
+    sigset_t sig_set;
+    int ret_sig;
+    sigaddset(&sig_set, SIGINT);
+
+    sigwait(&sig_set, &ret_sig);
+    if(SIGINT == ret_sig) {
+        pthread_mutex_lock(&mutex);
+        is_alive = 0;
+        pthread_mutex_unlock(&mutex);
+    }
+}
+
 void *calculate(void *data) {
+    int iteration = 0;
     double pi = 0.0;
     Data *local_data = (Data *) data;
     int start = local_data->start_position;
     int thread_amount = ((Data *) data)->threads_amount;
+
     for (; ; start += thread_amount) {
         pi += 1.0 / (start * 4.0 + 1.0);
         pi -= 1.0 / (start * 4.0 + 3.0);
+        iteration++;
+        if (ITERATIONS_WITHOUT_CHECK == iteration) {
+            pthread_barrier_wait(&barrier);
+            pthread_mutex_lock(&mutex);
+            if (!is_alive) {
+                pthread_mutex_unlock(&mutex);
+                local_data->result = pi;
+                pthread_exit(EXIT_SUCCESS);
+            }
+            pthread_mutex_unlock(&mutex);
+            iteration = 0;
+        }
     }
-    local_data->result = pi;
-
-    pthread_exit(EXIT_SUCCESS);
 }
 
 void destroyAll(Data *database, pthread_t *threads) {
@@ -54,13 +82,16 @@ int countPi(int threads_amount) {
         if (pthread_create(&threads[i], NULL, calculate, &database[i]) != 0) {
             printf("Unable to create threads\n");
             destroyAll(database, threads);
+            return EXIT_FAILURE;
         }
     }
     double result = 0.0;
     for (int i = 0; i < threads_amount; ++i) {
         if (pthread_join(threads[i], NULL) != 0) {
             printf("Unable to join thread #%d\n", i);
-            continue;
+            return EXIT_FAILURE;
+        } else {
+            printf("Joined thread\n");
         }
         result += database[i].result;
     }
@@ -72,23 +103,33 @@ int countPi(int threads_amount) {
 }
 
 int main(int argc, char *argv[]) {
+    if (pthread_mutex_init(&mutex, NULL)) {
+        printf("Can't init mutex\n");
+        return EXIT_FAILURE;
+    }
+
+    sigset_t blocking_set;
+    sigaddset(&blocking_set, SIGINT);
+    pthread_sigmask(SIG_BLOCK, &blocking_set, NULL);
+
     if (argc == 2) {
         int threads_amount = atoi(argv[1]);
-        if (threads_amount <= 0) {
-            printf("Incorrect argument. Requires number >= 1\n");
+        if (pthread_barrier_init(&barrier, NULL, threads_amount)) {
+            return EXIT_FAILURE;
+        }
+        pthread_t thread_signal_handler;
+        if (pthread_create(&thread_signal_handler, NULL, signal_handler_thread, NULL) != 0) {
+            printf("Can't init thread_signal_handler\n");
             return EXIT_FAILURE;
         }
         countPi(threads_amount);
+        if (pthread_barrier_destroy(&barrier) != 0) {
+            printf("DESTROY error\n");
+            return EXIT_FAILURE;
+        }
         return EXIT_SUCCESS;
-    }
-    struct timespec start, end;
-
-    printf("Starting tests...");
-    for (int i = 1; i <= MAX_THREADS; ++i) {
-        clock_gettime(CLOCK_REALTIME, &start);
-        countPi(i);
-        clock_gettime(CLOCK_REALTIME, &end);
-        double result_time = (double)end.tv_sec - start.tv_sec +  0.000000001*(double)(end.tv_nsec-start.tv_nsec);
-        printf("Time taken %lf on %d threads\n", result_time, i);
+    } else {
+        printf("Pass count of threads as argument\n");
+        return EXIT_FAILURE;
     }
 }
