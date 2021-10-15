@@ -5,33 +5,17 @@
 #define MUTEX_COUNT 3
 #define NUMBER_OF_PRINTS 10
 
+int is_ready = 1;
+
 pthread_mutexattr_t mutex_attribute;
 pthread_mutex_t mutexes[MUTEX_COUNT];
 
 void destroyMutexes(int mutex_count) {
     for (int i = 0; i < mutex_count; ++i) {
         if (pthread_mutex_destroy(&mutexes[i]) != 0) {
-            perror("Error destoying mutex");
+            perror("Error destroying mutex");
             exit(EXIT_FAILURE);
         }
-    }
-}
-
-void fatalExit(char *error_message) {
-    destroyMutexes(MUTEX_COUNT);
-    perror(error_message);
-    exit(EXIT_FAILURE);
-}
-
-void lockMutex(int mutex_index) {
-    if (pthread_mutex_lock(&mutexes[mutex_index])) {
-        fatalExit("Error locking mutex");
-    }
-}
-
-void unlockMutex(int mutex_index) {
-    if (pthread_mutex_unlock(&mutexes[mutex_index])) {
-        fatalExit("Error unlocking mutex");
     }
 }
 
@@ -50,74 +34,63 @@ void initMutexes() {
     }
 }
 
-void *secondPrint(void *_) {
+void fatalExit(char *error_message) {
+    destroyMutexes(MUTEX_COUNT);
+    perror(error_message);
+    exit(EXIT_FAILURE);
+}
+
+void lockMutex(int mutex_index) {
+    if (MUTEX_COUNT <= mutex_index || 0 != pthread_mutex_lock(&mutexes[mutex_index])) {
+        fatalExit("Error locking mutex");
+    }
+}
+
+void unlockMutex(int mutex_index) {
+    if (MUTEX_COUNT <= mutex_index || 0 != pthread_mutex_unlock(&mutexes[mutex_index])) {
+        fatalExit("Error unlocking mutex");
+    }
+}
+
+void *firstPrinter(void *_) {
+    //mutex 0 locked
+    int i;
+    for (i = 0; i < NUMBER_OF_PRINTS; ++i) {
+        lockMutex((i + 1) % MUTEX_COUNT);
+        printf("THREAD 1\n");
+        unlockMutex(i % MUTEX_COUNT);
+    }
+    unlockMutex(i % MUTEX_COUNT);
+    return (void*)EXIT_SUCCESS;
+}
+
+void *secondPrinter(void *_) {
     lockMutex(2);
-    for (int i = 0; i < NUMBER_OF_PRINTS; ++i) {
-        lockMutex(1);
-        printf("Second: %d\n", i);
-        unlockMutex(2);
-        lockMutex(0);
-        unlockMutex(1);
-        lockMutex(2);
-        unlockMutex(0);
+    is_ready = 0;
+    int i;
+    for (i = 0; i < NUMBER_OF_PRINTS; ++i) {
+        lockMutex(i % MUTEX_COUNT);
+        printf("THREAD 2\n");
+        unlockMutex((i + 2) % MUTEX_COUNT);
     }
-    unlockMutex(2);
-    return NULL;
-}
-
-void firstPrint() {
-    //Locks first in main
-    for (int i = 0; i < NUMBER_OF_PRINTS; ++i) {
-        printf("First: %d\n", i);
-        lockMutex(0);
-        unlockMutex(1);
-        lockMutex(2);
-        unlockMutex(0);
-        lockMutex(1);
-        unlockMutex(2);
-    }
-    unlockMutex(1);
-}
-
-//Second
-void *print2(void *_) {
-    for (int i = 0; i < NUMBER_OF_PRINTS; ++i) {
-        lockMutex(0);
-        printf("ABOBICH\n");
-        lockMutex(1);
-    }
-}
-
-//First
-void *print(void *_) {
-    //Locked 0
-    for (int i = 0; i < NUMBER_OF_PRINTS; ++i) {
-        printf("ABOBA\n");
-        unlockMutex(0);
-        lockMutex(1);
-    }
+    unlockMutex((i - 1) % MUTEX_COUNT);
+    return (void*)EXIT_SUCCESS;
 }
 
 int main() {
-
-    //TODO
-    // Rewrite it
-
-    pthread_t child;
-
     initMutexes();
-    lockMutex(1);
-
-    if (pthread_create(&child, NULL, secondPrint, NULL)) {
+    lockMutex(0);
+    pthread_t child;
+    if (pthread_create(&child, NULL, secondPrinter, NULL)) {
         fatalExit("Error creating thread");
     }
-
-    firstPrint();
-
+    while (is_ready != 0) {
+        //Wait, until thread 2 locks mutex
+    }
+    firstPrinter(NULL);
     if (pthread_join(child, NULL)) {
         fatalExit("Error waiting thread");
     }
-
     destroyMutexes(MUTEX_COUNT);
     return EXIT_SUCCESS;
 }
