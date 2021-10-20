@@ -84,7 +84,7 @@ int main() {
     if (pthread_create(&child, NULL, secondPrinter, NULL)) {
         fatalExit("Error creating thread");
     }
-    while (is_ready != 0) {
+    while (0 != is_ready) {
         //Wait, until thread 2 locks mutex
     }
     firstPrinter(NULL);
