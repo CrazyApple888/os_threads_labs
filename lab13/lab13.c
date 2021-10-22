@@ -58,6 +58,9 @@ void *do_job(void *arg) {
         }
         printf("%s-%d\n", data->string, i);
         turn = !turn;
+        if (pthread_mutex_unlock(&mutex)) {
+            fatalExit("Mutex unlock");
+        }
         if (pthread_cond_signal(&condition)) {
             fatalExit("Cond signal");
         }
