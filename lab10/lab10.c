@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #define HUNGRY_PHILOSOPHERS 5
-#define DELAY 3000
+#define DELAY 30
 #define FOOD 5000
 
 pthread_mutex_t forks[HUNGRY_PHILOSOPHERS];
@@ -67,6 +67,8 @@ void *philosopher(void *num) {
     right_fork = id;
     left_fork = id + 1;
 
+    int total_food = 0;
+
     if (left_fork == HUNGRY_PHILOSOPHERS)
         left_fork = 0;
 
@@ -78,8 +80,10 @@ void *philosopher(void *num) {
         printf("Philosopher %d: eating.\n", id);
         usleep(DELAY * (FOOD - f + 1));
         down_forks(right_fork, left_fork);
+        total_food++;
     }
-    printf("Philosopher %d is done eating.\n", id);
+
+    printf("Philosopher %d is done eating: %d.\n", id, total_food);
     return EXIT_SUCCESS;
 }
 

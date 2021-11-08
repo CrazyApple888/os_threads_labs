@@ -154,6 +154,7 @@ void *sort(void *_) {
         }
         lockMutex();
         if (TRUE == isCompleted) {
+            unlockMutex();
             break;
         }
 
